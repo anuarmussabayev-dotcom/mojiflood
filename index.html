@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MojiFlood</title>
+
+    <!-- Telegram Mini App SDK — грузим ДО загрузчика Unity. -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+      // Ранний Telegram-init: запускается до старта движка — убирает белый «шов»
+      // на загрузке и разворачивает Mini App на весь экран. Вне Telegram — тихо пропускается.
+      (function () {
+        try {
+          var tg = window.Telegram && window.Telegram.WebApp;
+          if (!tg) return;
+          tg.ready();
+          tg.expand();
+          if (tg.setHeaderColor)      { try { tg.setHeaderColor('#0E1729'); }     catch (e) {} }
+          if (tg.setBackgroundColor)  { try { tg.setBackgroundColor('#0E1729'); } catch (e) {} }
+          if (tg.disableVerticalSwipes) { try { tg.disableVerticalSwipes(); }     catch (e) {} } // свайп-вниз не закрывает игру
+        } catch (e) {}
+      })();
+    </script>
+
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #0E1729; overflow: hidden; }
+      #unity-canvas { position: fixed; top: 0; left: 0; background: #0E1729; touch-action: none; }
+      #unity-loading-bar { position: fixed; left: 0; right: 0; bottom: 18%; margin: auto; width: 60%; max-width: 360px; display: none; }
+      #unity-progress-bar-empty { width: 100%; height: 10px; border-radius: 6px; background: #1B2A44; overflow: hidden; }
+      #unity-progress-bar-full { width: 0%; height: 100%; border-radius: 6px; background: #61B8F2; transition: width 0.1s linear; }
+      #unity-loading-text { text-align: center; color: #61B8F2; font-family: system-ui, -apple-system, sans-serif; font-size: 15px; letter-spacing: 2px; margin-bottom: 10px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-loading-bar">
+      <div id="unity-loading-text">MOJIFLOOD</div>
+      <div id="unity-progress-bar-empty"><div id="unity-progress-bar-full"></div></div>
+    </div>
+
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+
+      // Портретный «телефонный» столбец: на широком окне (десктоп-браузер) НЕ растягиваем
+      // интерфейс на всю ширину, а центрируем колонку с фирменными полями по бокам.
+      // На телефоне / в Telegram (узкий портрет) окно и так уже → колонка занимает весь экран.
+      function fitCanvas() {
+        var MAX = 0.62; // на ШИРОКОМ экране (десктоп) держим портретную колонку, чтобы UI не растягивался
+        var w = window.innerWidth, h = window.innerHeight;
+        // телефон (тач-экран) ВСЕГДА заполняет ширину; колонка-клэмп только на десктопе (мышь) —
+        // иначе адресная строка браузера на телефоне делает окно «шире» 1:2 → поля по бокам
+        var coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+        if (!coarse && w / h > MAX) w = Math.floor(h * MAX);
+        canvas.style.width = w + "px";
+        canvas.style.height = h + "px";
+        canvas.style.left = Math.floor((window.innerWidth - w) / 2) + "px";
+      }
+      window.addEventListener("resize", fitCanvas);
+      fitCanvas();
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/WebGL_TG.loader.js";
+      var config = {
+        arguments: [],
+        dataUrl: buildUrl + "/WebGL_TG.data.unityweb",
+        frameworkUrl: buildUrl + "/WebGL_TG.framework.js.unityweb",
+        codeUrl: buildUrl + "/WebGL_TG.wasm.unityweb",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "AnuarMussabayev",
+        productName: "MojiFlood",
+        productVersion: "1.0",
+        // На слабых телефонах раскомментировать для прироста FPS (рендер в нативном, не retina, разрешении):
+        // devicePixelRatio: 1,
+      };
+
+      document.querySelector("#unity-loading-bar").style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+          window.unityGame = unityInstance;
+          fitCanvas();
+          document.querySelector("#unity-loading-bar").style.display = "none";
+
+          // Кнопка «назад» Telegram → в игру (unityInstance доступен только здесь, после загрузки).
+          try {
+            var tg = window.Telegram && window.Telegram.WebApp;
+            if (tg && tg.BackButton) {
+              tg.BackButton.onClick(function () {
+                if (window.unityGame) window.unityGame.SendMessage('[TelegramBridge]', 'OnTelegramBack');
+              });
+              tg.BackButton.show();
+            }
+          } catch (e) {}
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>
