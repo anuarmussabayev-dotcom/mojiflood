@@ -30,25 +30,24 @@
         } catch (e) {}
       }
 
-      // Диагностика (временная): если через пару секунд фуллскрин НЕ включился — показать мелкую
-      // строку сверху с платформой/версией Telegram (видно, поддерживает ли клиент фуллскрин).
-      // На рабочем телефоне (фуллскрин есть) НЕ показывается. Авто-скрытие. Уберём после отладки.
-      function mfMaybeDiag() {
+      // Диагностика (ВРЕМЕННАЯ, уберём): постоянная красная полоска вверху с тегом сборки и
+      // состоянием Telegram — платформа, версия, поддержка фуллскрина (fsSup), включён ли он (fsOn).
+      // Скрин этой полоски однозначно скажет, что происходит. На обычной (не-Telegram) странице — тоже.
+      function mfDiag() {
         try {
           var tg = window.Telegram && window.Telegram.WebApp;
-          var ex = document.getElementById('mf-diag');
-          if (!tg || tg.isFullscreen) { if (ex) ex.style.display = 'none'; return; }
-          var el = ex;
+          var el = document.getElementById('mf-diag');
           if (!el) {
             el = document.createElement('div');
             el.id = 'mf-diag';
-            el.style.cssText = 'position:fixed;top:2px;left:0;right:0;z-index:99999;pointer-events:none;' +
-              'text-align:center;font:11px/1.3 monospace;color:#fff;text-shadow:0 0 3px #000;opacity:0.85;';
+            el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;pointer-events:none;' +
+              'text-align:center;font:11px/1.4 monospace;color:#fff;background:rgba(190,20,20,0.65);';
             document.body.appendChild(el);
           }
-          el.textContent = 'MF ' + (tg.platform || '?') + ' v' + (tg.version || '?') +
-            ' fs:' + (tg.requestFullscreen ? 'Y' : 'N');
-          setTimeout(function () { if (el) el.style.display = 'none'; }, 9000);
+          el.textContent = tg
+            ? ('BUILD-D ' + (tg.platform || '?') + ' v' + (tg.version || '?') +
+               ' fsSup:' + (tg.requestFullscreen ? 'Y' : 'N') + ' fsOn:' + (tg.isFullscreen ? 'Y' : 'N'))
+            : 'BUILD-D no-Telegram';
         } catch (e) {}
       }
 
@@ -155,7 +154,7 @@
           pushTgInsets();
           setTimeout(pushTgInsets, 300);
           setTimeout(pushTgInsets, 1200);
-          setTimeout(mfMaybeDiag, 3000); // покажет диагностику, только если фуллскрин не включился
+          mfDiag(); setInterval(mfDiag, 1500); // постоянная диагностическая полоска (обновляется)
 
           // Кнопка «назад» Telegram → в игру (unityInstance доступен только здесь, после загрузки).
           try {
