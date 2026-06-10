@@ -20,7 +20,9 @@
           var ca = tg.contentSafeAreaInset || {};
           var w = window.innerWidth || 1, h = window.innerHeight || 1;
           var top    = ((sa.top    || 0) + (ca.top    || 0)) / h;
-          var bottom = ((sa.bottom || 0) + (ca.bottom || 0)) / h;
+          // Низ: плашка навигации Android в фуллскрине обычно ПУСТАЯ (жест-режим) → отдаём её под
+          // клавиатуру/поле, оставляя тонкий отступ ~10px от жест-полоски (а не резервируем всё).
+          var bottom = Math.min((sa.bottom || 0) + (ca.bottom || 0), 10) / h;
           var left   = ((sa.left   || 0) + (ca.left   || 0)) / w;
           var right  = ((sa.right  || 0) + (ca.right  || 0)) / w;
           var fs = tg.isFullscreen ? 1 : 0;
@@ -44,10 +46,10 @@
               'text-align:center;font:11px/1.4 monospace;color:#fff;background:rgba(190,20,20,0.65);';
             document.body.appendChild(el);
           }
-          if (!tg) { el.textContent = 'BUILD-E no-Telegram'; return; }
+          if (!tg) { el.textContent = 'BUILD-F no-Telegram'; return; }
           var sa = tg.safeAreaInset || {}, ca = tg.contentSafeAreaInset || {};
           var itop = (sa.top || 0) + (ca.top || 0), ibot = (sa.bottom || 0) + (ca.bottom || 0);
-          el.textContent = 'BUILD-E ' + (tg.platform || '?') + ' v' + (tg.version || '?') +
+          el.textContent = 'BUILD-F ' + (tg.platform || '?') + ' v' + (tg.version || '?') +
             ' fsOn:' + (tg.isFullscreen ? 'Y' : 'N') +
             ' ' + (window.innerWidth || 0) + 'x' + (window.innerHeight || 0) +
             ' in:t' + itop + ' b' + ibot;
