@@ -9,8 +9,29 @@
     <!-- Telegram Mini App SDK — грузим ДО загрузчика Unity. -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
-      // Ранний Telegram-init: запускается до старта движка — убирает белый «шов»
-      // на загрузке и разворачивает Mini App на весь экран. Вне Telegram — тихо пропускается.
+      // Безопасные отступы Telegram → движок (доли экрана). Складываем системные (статус-бар,
+      // плашка навигации Android) и контентные (плавающий ✕/⋮ Telegram) + флаг фуллскрина.
+      // Зовётся из событий Telegram и один раз после загрузки движка (когда появился unityGame).
+      function pushTgInsets() {
+        try {
+          var tg = window.Telegram && window.Telegram.WebApp;
+          if (!tg) return;
+          var sa = tg.safeAreaInset || {};
+          var ca = tg.contentSafeAreaInset || {};
+          var w = window.innerWidth || 1, h = window.innerHeight || 1;
+          var top    = ((sa.top    || 0) + (ca.top    || 0)) / h;
+          var bottom = ((sa.bottom || 0) + (ca.bottom || 0)) / h;
+          var left   = ((sa.left   || 0) + (ca.left   || 0)) / w;
+          var right  = ((sa.right  || 0) + (ca.right  || 0)) / w;
+          var fs = tg.isFullscreen ? 1 : 0;
+          var payload = top.toFixed(4) + ',' + bottom.toFixed(4) + ',' +
+                        left.toFixed(4) + ',' + right.toFixed(4) + ',' + fs;
+          if (window.unityGame) window.unityGame.SendMessage('[TelegramBridge]', 'OnWebSafeInsets', payload);
+        } catch (e) {}
+      }
+
+      // Ранний Telegram-init: запускается до старта движка — убирает белый «шов» на загрузке,
+      // разворачивает Mini App и (на телефоне) открывает на ВЕСЬ ЭКРАН. Вне Telegram — тихо пропускается.
       (function () {
         try {
           var tg = window.Telegram && window.Telegram.WebApp;
@@ -20,6 +41,20 @@
           if (tg.setHeaderColor)      { try { tg.setHeaderColor('#0E1729'); }     catch (e) {} }
           if (tg.setBackgroundColor)  { try { tg.setBackgroundColor('#0E1729'); } catch (e) {} }
           if (tg.disableVerticalSwipes) { try { tg.disableVerticalSwipes(); }     catch (e) {} } // свайп-вниз не закрывает игру
+
+          // На весь экран (Bot API 8.0+, только сенсорные = телефон): убирает шапку Telegram сверху
+          // и выносит плашку навигации Android из раскладки → поле крупнее, полосы всплывают поверх
+          // фона. Десктоп (мышь) остаётся обычным окном. Отступы прокидываем в движок (pushTgInsets).
+          var coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+          var canFs = tg.isVersionAtLeast && tg.isVersionAtLeast('8.0');
+          if (coarse && canFs && tg.requestFullscreen) { try { tg.requestFullscreen(); } catch (e) {} }
+
+          if (tg.onEvent) {
+            try { tg.onEvent('safeAreaChanged',        pushTgInsets); } catch (e) {}
+            try { tg.onEvent('contentSafeAreaChanged', pushTgInsets); } catch (e) {}
+            try { tg.onEvent('fullscreenChanged',      pushTgInsets); } catch (e) {}
+            try { tg.onEvent('fullscreenFailed',       pushTgInsets); } catch (e) {}
+          }
         } catch (e) {}
       })();
     </script>
@@ -86,6 +121,12 @@
           window.unityGame = unityInstance;
           fitCanvas();
           document.querySelector("#unity-loading-bar").style.display = "none";
+
+          // Прокинуть актуальные отступы Telegram в движок (фуллскрин/полосы уже могли установиться).
+          // Несколько попыток — фуллскрин-переход и отчёт об отступах иногда приходят чуть позже.
+          pushTgInsets();
+          setTimeout(pushTgInsets, 300);
+          setTimeout(pushTgInsets, 1200);
 
           // Кнопка «назад» Telegram → в игру (unityInstance доступен только здесь, после загрузки).
           try {
