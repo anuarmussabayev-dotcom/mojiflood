@@ -44,10 +44,13 @@
               'text-align:center;font:11px/1.4 monospace;color:#fff;background:rgba(190,20,20,0.65);';
             document.body.appendChild(el);
           }
-          el.textContent = tg
-            ? ('BUILD-D ' + (tg.platform || '?') + ' v' + (tg.version || '?') +
-               ' fsSup:' + (tg.requestFullscreen ? 'Y' : 'N') + ' fsOn:' + (tg.isFullscreen ? 'Y' : 'N'))
-            : 'BUILD-D no-Telegram';
+          if (!tg) { el.textContent = 'BUILD-E no-Telegram'; return; }
+          var sa = tg.safeAreaInset || {}, ca = tg.contentSafeAreaInset || {};
+          var itop = (sa.top || 0) + (ca.top || 0), ibot = (sa.bottom || 0) + (ca.bottom || 0);
+          el.textContent = 'BUILD-E ' + (tg.platform || '?') + ' v' + (tg.version || '?') +
+            ' fsOn:' + (tg.isFullscreen ? 'Y' : 'N') +
+            ' ' + (window.innerWidth || 0) + 'x' + (window.innerHeight || 0) +
+            ' in:t' + itop + ' b' + ibot;
         } catch (e) {}
       }
 
