@@ -30,6 +30,28 @@
         } catch (e) {}
       }
 
+      // Диагностика (временная): если через пару секунд фуллскрин НЕ включился — показать мелкую
+      // строку сверху с платформой/версией Telegram (видно, поддерживает ли клиент фуллскрин).
+      // На рабочем телефоне (фуллскрин есть) НЕ показывается. Авто-скрытие. Уберём после отладки.
+      function mfMaybeDiag() {
+        try {
+          var tg = window.Telegram && window.Telegram.WebApp;
+          var ex = document.getElementById('mf-diag');
+          if (!tg || tg.isFullscreen) { if (ex) ex.style.display = 'none'; return; }
+          var el = ex;
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'mf-diag';
+            el.style.cssText = 'position:fixed;top:2px;left:0;right:0;z-index:99999;pointer-events:none;' +
+              'text-align:center;font:11px/1.3 monospace;color:#fff;text-shadow:0 0 3px #000;opacity:0.85;';
+            document.body.appendChild(el);
+          }
+          el.textContent = 'MF ' + (tg.platform || '?') + ' v' + (tg.version || '?') +
+            ' fs:' + (tg.requestFullscreen ? 'Y' : 'N');
+          setTimeout(function () { if (el) el.style.display = 'none'; }, 9000);
+        } catch (e) {}
+      }
+
       // Ранний Telegram-init: запускается до старта движка — убирает белый «шов» на загрузке,
       // разворачивает Mini App и (на телефоне) открывает на ВЕСЬ ЭКРАН. Вне Telegram — тихо пропускается.
       (function () {
@@ -42,12 +64,18 @@
           if (tg.setBackgroundColor)  { try { tg.setBackgroundColor('#0E1729'); } catch (e) {} }
           if (tg.disableVerticalSwipes) { try { tg.disableVerticalSwipes(); }     catch (e) {} } // свайп-вниз не закрывает игру
 
-          // На весь экран (Bot API 8.0+, только сенсорные = телефон): убирает шапку Telegram сверху
-          // и выносит плашку навигации Android из раскладки → поле крупнее, полосы всплывают поверх
-          // фона. Десктоп (мышь) остаётся обычным окном. Отступы прокидываем в движок (pushTgInsets).
-          var coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
-          var canFs = tg.isVersionAtLeast && tg.isVersionAtLeast('8.0');
-          if (coarse && canFs && tg.requestFullscreen) { try { tg.requestFullscreen(); } catch (e) {} }
+          // На весь экран (Bot API 8.0+): убирает шапку Telegram сверху и выносит плашку навигации
+          // Android из раскладки → поле крупнее, полосы всплывают поверх фона. Гейт по РЕАЛЬНОЙ
+          // платформе Telegram (надёжнее, чем pointer:coarse) — не трогаем только ЯВНЫЙ десктоп.
+          // Зовём сразу + пара повторов: фуллскрин иногда не схватывается сразу после ready().
+          // Отступы прокидываем в движок (pushTgInsets) по событиям + после загрузки.
+          var plat = (tg.platform || '').toLowerCase();
+          var isDesktop = (plat === 'tdesktop' || plat === 'macos' || plat === 'weba' || plat === 'web');
+          var canFs = !isDesktop && tg.isVersionAtLeast && tg.isVersionAtLeast('8.0') && tg.requestFullscreen;
+          function goFullscreen() { try { if (canFs && !tg.isFullscreen) tg.requestFullscreen(); } catch (e) {} }
+          goFullscreen();
+          setTimeout(goFullscreen, 600);
+          setTimeout(goFullscreen, 1800);
 
           if (tg.onEvent) {
             try { tg.onEvent('safeAreaChanged',        pushTgInsets); } catch (e) {}
@@ -127,6 +155,7 @@
           pushTgInsets();
           setTimeout(pushTgInsets, 300);
           setTimeout(pushTgInsets, 1200);
+          setTimeout(mfMaybeDiag, 3000); // покажет диагностику, только если фуллскрин не включился
 
           // Кнопка «назад» Telegram → в игру (unityInstance доступен только здесь, после загрузки).
           try {
