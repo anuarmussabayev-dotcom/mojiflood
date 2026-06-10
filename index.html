@@ -32,30 +32,6 @@
         } catch (e) {}
       }
 
-      // Диагностика (ВРЕМЕННАЯ, уберём): постоянная красная полоска вверху с тегом сборки и
-      // состоянием Telegram — платформа, версия, поддержка фуллскрина (fsSup), включён ли он (fsOn).
-      // Скрин этой полоски однозначно скажет, что происходит. На обычной (не-Telegram) странице — тоже.
-      function mfDiag() {
-        try {
-          var tg = window.Telegram && window.Telegram.WebApp;
-          var el = document.getElementById('mf-diag');
-          if (!el) {
-            el = document.createElement('div');
-            el.id = 'mf-diag';
-            el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;pointer-events:none;' +
-              'text-align:center;font:11px/1.4 monospace;color:#fff;background:rgba(190,20,20,0.65);';
-            document.body.appendChild(el);
-          }
-          if (!tg) { el.textContent = 'BUILD-F no-Telegram'; return; }
-          var sa = tg.safeAreaInset || {}, ca = tg.contentSafeAreaInset || {};
-          var itop = (sa.top || 0) + (ca.top || 0), ibot = (sa.bottom || 0) + (ca.bottom || 0);
-          el.textContent = 'BUILD-F ' + (tg.platform || '?') + ' v' + (tg.version || '?') +
-            ' fsOn:' + (tg.isFullscreen ? 'Y' : 'N') +
-            ' ' + (window.innerWidth || 0) + 'x' + (window.innerHeight || 0) +
-            ' in:t' + itop + ' b' + ibot;
-        } catch (e) {}
-      }
-
       // Ранний Telegram-init: запускается до старта движка — убирает белый «шов» на загрузке,
       // разворачивает Mini App и (на телефоне) открывает на ВЕСЬ ЭКРАН. Вне Telegram — тихо пропускается.
       (function () {
@@ -159,7 +135,6 @@
           pushTgInsets();
           setTimeout(pushTgInsets, 300);
           setTimeout(pushTgInsets, 1200);
-          mfDiag(); setInterval(mfDiag, 1500); // постоянная диагностическая полоска (обновляется)
 
           // Кнопка «назад» Telegram → в игру (unityInstance доступен только здесь, после загрузки).
           try {
